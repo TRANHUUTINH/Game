@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bắn súng game</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+
+        div {
+            align-items: center;
+        }
+
+        #startButton {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        #startButton:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+
+<button id="startButton">Bắt đầu</button>
+
+<div style="position:relative; display: none;">
+    <video src="Pixel-Waterfall.mp4" autoplay muted loop width="1800px" height="800px"></video>
+    <div style="position:absolute; top:0; left:190px">
+        <canvas id="gameCanvas" width="1420px" height="800"></canvas>
+    </div>
+</div>
+
+<script>
+    // JavaScript code here
+    let startButton = document.getElementById("startButton");
+    let gameDiv = document.querySelector("div[style*='position:relative']");
+    startButton.addEventListener("click", function () {
+        startButton.style.display = "none";
+        gameDiv.style.display = "block";
+        startGame();
+    });
+        
+        let ove = new Audio();
+        ove.src = "Am-thanh-that-bai-trong-tro-choi-www_tiengdong_com.mp3"
+        let cham = new Audio();
+        cham.src = "Am-thanh-chien-thang-www_tiengdong_com.mp3"
+        let mou = new Audio();
+        mou.src = "Tieng-ban-cung-ten-www_tiengdong_com.mp3"
+        let win = new Audio();
+        win.src = "Am-thanh-thien-nhien-www_tiengdong_com.mp3"
+
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 100;
+                this.height = 150;
+                this.bullets = [];
+                this.image = new Image;
+                this.image.src = 'skin.png'
+            }
+
+            draw(context) {
+                context.drawImage(this.image, this.x, this.y, this.width, this.height);
+            }
+
+            shoot(x, y) {
+                const bullet = new Bullet(this.x + this.width / 2, this.y + this.height / 2, x, y);
+                this.bullets.push(bullet);
+            }
+
+            update() {
+                this.bullets.forEach((bullet) => {
+                    bullet.move();
+                });
+            }
+
+        }
+    class Enemy {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.width = 50;
+            this.height = 60;
+            this.speed = 2; // Điều chỉnh tốc độ của vật
+            this.image = new Image();
+            this.image.src = "wi.png";
+            this.image.onload = () => {
+                this.loaded = true;
+            };
+        }
+        draw(context) {
+            if (this.loaded) {
+                context.drawImage(this.image, this.x, this.y, this.width, this.height);
+            }
+        }
+        move() {
+            this.y += this.speed;
+        }
+    }
+        class Bullet {
+            constructor(x, y, targetX, targetY) {
+                this.x = x;
+                this.y = y;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.speed = 15;
+                this.distance = Math.sqrt((this.targetX - this.x) ** 2 + (this.targetY - this.y) ** 2);
+                this.velX = (this.targetX - this.x) / this.distance * this.speed;
+                this.velY = (this.targetY - this.y) / this.distance * this.speed;
+                this.width = 25;
+                this.height = 25;
+                this.bulletImg = new Image();
+                this.bulletImg.src = "907-removebg-preview.png";
+                this.bulletImg.addEventListener('load', () => {
+                    this.isLoaded = true;
+                });
+            }
+
+            draw(context) {
+                if (this.isLoaded) {
+                    context.drawImage(this.bulletImg, this.x, this.y, this.width, this.height);
+                } else {
+                    context.fillStyle = "yellow";
+                    context.fillRect(this.x, this.y, this.width, this.height);
+                }
+            }
+
+            move() {
+                this.x += this.velX;
+                this.y += this.velY;
+            }
+        }
+        class Game {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.context = canvas.getContext("2d");
+                this.player = new Player(600, 600);
+                this.enemies = [];
+                this.score = 0;
+                this.gameOver = false;
+                this.timeLeft = 20;
+                this.timerId = setInterval(() => {
+                    this.timeLeft--;
+                    win.play();
+
+                    if (this.timeLeft <= 0) {
+                        clearInterval(this.timerId);
+                        if (!this.gameOver) {
+
+                            alert("Bạn đã chiến thắng!");
+
+                        } cham.play();
+                    }
+                }, 1000);
+                this.canvas.addEventListener("mousedown", (event) => {
+                    const rect = this.canvas.getBoundingClientRect(); // Lấy vị trí của canvas
+                    const x = event.clientX - rect.left; // Điều chỉnh tọa độ x của chuột dựa trên vị trí của canvas
+                    const y = event.clientY - rect.top; // Điều chỉnh tọa độ y của chuột dựa trên vị trí của canvas
+                    this.player.shoot(x, y);
+                    mou.play();
+                });
+
+            }
+            run() {
+                this.spawnEnemies();
+                setInterval(() => {
+                    if (!this.gameOver) {
+                        this.update();
+                        this.draw();
+                    }
+                }, 1000 / 60);
+            }
+
+            spawnEnemies() {
+                const enemy = new Enemy(Math.random() * 900, -60);
+                this.enemies.push(enemy);
+                setTimeout(() => {
+                    this.spawnEnemies();
+                }, Math.random() * 2000);
+            }
+
+            update() {
+                this.player.update();
+                for (let i = 0; i < this.enemies.length; i++) {
+                    const enemy = this.enemies[i];
+                    enemy.move();
+
+                    // Kiểm tra va chạm giữa đạn và enemy
+                    for (let j = 0; j < this.player.bullets.length; j++) {
+                        const bullet = this.player.bullets[j];
+                        if (
+                            bullet.x < enemy.x + enemy.width &&
+                            bullet.x + bullet.width > enemy.x &&
+                            bullet.y < enemy.y + enemy.height &&
+                            bullet.y + bullet.height > enemy.y
+                        ) {
+                            // Xóa enemy và đạn
+                            this.enemies.splice(i, true);
+                            this.player.bullets.splice(j, true);
+                            this.score++;
+                            break;
+                        }
+                    }
+
+                    if (
+                        this.player.x < enemy.x + enemy.width &&
+                        this.player.x + this.player.width > enemy.x &&
+                        this.player.y < enemy.y + enemy.height &&
+                        this.player.y + this.player.height > enemy.y
+                    ) {
+                        ove.play();
+                        this.endGame("Game over! Điểm của bạn là " + this.score);
+                    }
+
+                    if (enemy.y > this.canvas.height) {
+                        this.enemies.splice(i, true);
+                        i--;
+                    }
+                }
+
+                if (this.timeLeft <= 0 && !this.gameOver && this.enemies.length === 0) {
+                    this.winGame("Bạn đã chiến thắng!");
+                }
+            }
+
+            draw() {
+                this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.player.draw(this.context);
+                for (let i = 0; i < this.enemies.length; i++) {
+                    const enemy = this.enemies[i];
+                    enemy.draw(this.context);
+                }
+
+                for (let i = 0; i < this.player.bullets.length; i++) {
+                    const bullet = this.player.bullets[i];
+                    bullet.draw(this.context);
+                }
+                this.context.fillStyle = "black";
+                this.context.font = "20px Arial";
+                this.context.fillText("Điểm: " + this.score, 10, 25);
+                this.context.fillText("Thời gian: " + this.timeLeft, this.canvas.width - 130, 25);
+            }
+
+            // Trong phương thức winGame:
+            winGame(message) {
+                clearInterval(this.timerId);
+                this.gameOver = true;
+                if (confirm(message + " Bạn muốn chơi lại không?")) {
+                    this.resetGame();
+                } else {
+                    startButton.style.display = "block";
+                    gameDiv.style.display = "none";
+                }
+                win.play();
+            }
+
+            endGame(message) {
+                clearInterval(this.timerId);
+                this.gameOver = true;
+                if (confirm(message + " Bạn muốn chơi lại không?")) {
+                    this.resetGame();
+                } else {
+                    startButton.style.display = "block";
+                    gameDiv.style.display = "none";
+                }
+            }
+
+
+
+            resetGame() {
+                this.score = 0;
+                this.timeLeft = 20;
+                this.player = new Player(600, 600);
+                this.enemies = [];
+                this.gameOver = false;
+                this.timerId = setInterval(() => {
+                    this.timeLeft--;
+                    win.play();
+
+                    if (this.timeLeft <= 0) {
+                        this.endGame("Bạn đã thua! Điểm của bạn là " + this.score);
+                    }
+                }, 1000);
+            }
+        }
+
+        const canvas = document.getElementById("gameCanvas");
+        const game = new Game(canvas);
+        game.run();
+
+    </script>
+</body>
+
+</html>
